@@ -1,12 +1,12 @@
 import 'package:auctora/OldAntiquePage.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'homepage.dart';
 import 'NewRefurbishedPage.dart';
+import 'live_auctions_page.dart'; // Import the new live auctions page
 
 class BuyerPage extends StatelessWidget {
-  const BuyerPage({Key? key}) : super(key: key);
+  const BuyerPage({super.key});
 
   // --- UI Colors and Styles ---
   static const Color backgroundDark = Color(0xFF0D1117);
@@ -35,17 +35,12 @@ class BuyerPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Lottie Animation
               Center(
                   child: Lottie.asset('assets/animations/buyer.json',
                       height: 150)),
               const SizedBox(height: 16),
-
-              // Promo Banner
               _buildPromoBanner(),
               const SizedBox(height: 24),
-
-              // Categories
               const Text("Categories",
                   style: TextStyle(
                       color: whiteText,
@@ -53,10 +48,7 @@ class BuyerPage extends StatelessWidget {
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               _buildCategoryGrid(context),
-
               const SizedBox(height: 24),
-
-              // Recommended Section
               const Text("Recommended for You",
                   style: TextStyle(
                       color: whiteText,
@@ -77,27 +69,27 @@ class BuyerPage extends StatelessWidget {
       elevation: 0,
       iconTheme: const IconThemeData(color: Colors.white),
       title: Row(
-        children: [
+        children: const [
           Icon(Icons.gavel, color: accentYellow),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text("Auction",
               style:
               TextStyle(color: whiteText, fontWeight: FontWeight.bold)),
           Text("House",
               style: TextStyle(
                   color: accentYellow, fontWeight: FontWeight.bold)),
-          const Spacer(),
+          Spacer(),
           IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () {},
+              icon: Icon(Icons.search),
+              onPressed: null, // Disabled for now
               color: whiteText),
           IconButton(
-              icon: const Icon(Icons.notifications_none),
-              onPressed: () {},
+              icon: Icon(Icons.notifications_none),
+              onPressed: null, // Disabled for now
               color: whiteText),
           IconButton(
-              icon: const Icon(Icons.person_outline),
-              onPressed: () {},
+              icon: Icon(Icons.person_outline),
+              onPressed: null, // Disabled for now
               color: whiteText),
         ],
       ),
@@ -177,7 +169,7 @@ class BuyerPage extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => NewRefurbishedPage()),
+              MaterialPageRoute(builder: (_) => const NewRefurbishedPage()),
             );
           },
         ),
@@ -187,7 +179,7 @@ class BuyerPage extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => OldAntiquePage()),
+              MaterialPageRoute(builder: (_) => const OldAntiquePage()),
             );
           },
         ),
@@ -210,7 +202,7 @@ class BuyerPage extends StatelessWidget {
       height: 200,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: 6,
+        itemCount: 6, // Placeholder
         itemBuilder: (context, index) {
           return Container(
             width: 140,
@@ -251,7 +243,7 @@ class _DrawerItem extends StatelessWidget {
     return ListTile(
       leading: Icon(icon, color: Colors.white),
       title: Text(label, style: const TextStyle(color: Colors.white)),
-      onTap: () {},
+      onTap: () {}, // Placeholder
     );
   }
 }
@@ -284,47 +276,6 @@ class _CategoryCard extends StatelessWidget {
                 style: const TextStyle(color: Colors.white)),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// Create a new page to display live auctions
-class LiveAuctionsPage extends StatelessWidget {
-  const LiveAuctionsPage({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Live Auctions'),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('auctions')
-            .where('status', isEqualTo: 'active')
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final auctions = snapshot.data!.docs;
-
-          return ListView.builder(
-            itemCount: auctions.length,
-            itemBuilder: (context, index) {
-              final auction = auctions[index];
-              return ListTile(
-                title: Text('Auction for Product ID: ${auction['productId']}'),
-                subtitle: Text('Current Bid: \$${auction['currentBid']}'),
-                onTap: () {
-                  // Navigate to the auction details page
-                },
-              );
-            },
-          );
-        },
       ),
     );
   }
