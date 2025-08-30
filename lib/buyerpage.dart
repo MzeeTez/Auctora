@@ -1,4 +1,5 @@
 import 'package:auctora/OldAntiquePage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'homepage.dart';
@@ -35,7 +36,9 @@ class BuyerPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Lottie Animation
-              Center(child: Lottie.asset('assets/animations/buyer.json', height: 150)),
+              Center(
+                  child: Lottie.asset('assets/animations/buyer.json',
+                      height: 150)),
               const SizedBox(height: 16),
 
               // Promo Banner
@@ -81,8 +84,8 @@ class BuyerPage extends StatelessWidget {
               style:
               TextStyle(color: whiteText, fontWeight: FontWeight.bold)),
           Text("House",
-              style:
-              TextStyle(color: accentYellow, fontWeight: FontWeight.bold)),
+              style: TextStyle(
+                  color: accentYellow, fontWeight: FontWeight.bold)),
           const Spacer(),
           IconButton(
               icon: const Icon(Icons.search),
@@ -188,9 +191,16 @@ class BuyerPage extends StatelessWidget {
             );
           },
         ),
-        _CategoryCard(title: "Live Auctions", icon: Icons.gavel, onTap: () {}),
         _CategoryCard(
-            title: "Customized", icon: Icons.build, onTap: () {}),
+            title: "Live Auctions",
+            icon: Icons.gavel,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LiveAuctionsPage()),
+              );
+            }),
+        _CategoryCard(title: "Customized", icon: Icons.build, onTap: () {}),
       ],
     );
   }
@@ -274,6 +284,47 @@ class _CategoryCard extends StatelessWidget {
                 style: const TextStyle(color: Colors.white)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// Create a new page to display live auctions
+class LiveAuctionsPage extends StatelessWidget {
+  const LiveAuctionsPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Live Auctions'),
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('auctions')
+            .where('status', isEqualTo: 'active')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final auctions = snapshot.data!.docs;
+
+          return ListView.builder(
+            itemCount: auctions.length,
+            itemBuilder: (context, index) {
+              final auction = auctions[index];
+              return ListTile(
+                title: Text('Auction for Product ID: ${auction['productId']}'),
+                subtitle: Text('Current Bid: \$${auction['currentBid']}'),
+                onTap: () {
+                  // Navigate to the auction details page
+                },
+              );
+            },
+          );
+        },
       ),
     );
   }
