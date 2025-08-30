@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart'; // Corrected line
 import 'package:mime/mime.dart';
 
 class AddProductPage extends StatefulWidget {
@@ -26,7 +26,16 @@ class _AddProductPageState extends State<AddProductPage> {
   bool _isUploading = false;
 
   String? _selectedCategory;
-  final List<String> _categories = ["Antique/Old", "New / Refurbished"];
+  final List<String> _categories = [
+    'New & Refurbished',
+    'Old & Antique',
+    'Customized'
+  ];
+
+  void _showError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
 
   Future<void> _pickImages() async {
     final picker = ImagePicker();
@@ -42,7 +51,7 @@ class _AddProductPageState extends State<AddProductPage> {
       final fileSize = await file.length();
 
       if (!(mimeType?.startsWith('image/') ?? false)) {
-        _showError("Only image files allowed.");
+        _showError("Only image files are allowed.");
         continue;
       }
       if (fileSize > 5 * 1024 * 1024) {
@@ -54,39 +63,35 @@ class _AddProductPageState extends State<AddProductPage> {
     }
 
     if (validImages.length > 5) {
-      _showError("Max 5 images allowed.");
+      _showError("A maximum of 5 images is allowed.");
       validImages = validImages.sublist(0, 5);
     }
 
     setState(() => _imageFiles = validImages);
   }
 
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
   Future<void> _saveProduct() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (_imageFiles.isEmpty) {
-      _showError("Please upload at least 1 image");
+      _showError("Please upload at least one image.");
       return;
     }
 
     if (_selectedCategory == null) {
-      _showError("Select a category");
+      _showError("Please select a category.");
       return;
     }
 
     final price = double.tryParse(_priceController.text.trim());
     if (price == null || price <= 0) {
-      _showError("Enter valid price");
+      _showError("Please enter a valid price.");
       return;
     }
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      _showError("User not logged in");
+      _showError("You must be logged in to add a product.");
       return;
     }
 
@@ -95,10 +100,11 @@ class _AddProductPageState extends State<AddProductPage> {
     try {
       List<String> imageUrls = [];
       for (var file in _imageFiles) {
-        final fileName = DateTime.now().millisecondsSinceEpoch.toString();
+        final fileName =
+            '${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
         final storageRef = FirebaseStorage.instance
             .ref()
-            .child('product_images/${user.uid}/$fileName.jpg');
+            .child('product_images/${user.uid}/$fileName');
         await storageRef.putFile(file);
         final url = await storageRef.getDownloadURL();
         imageUrls.add(url);
@@ -114,16 +120,20 @@ class _AddProductPageState extends State<AddProductPage> {
         'imageUrls': imageUrls,
         'createdAt': Timestamp.now(),
         'userId': user.uid,
+        'isApproved': false,
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Product added successfully!")));
+      _showError("Product added successfully!");
 
-      Navigator.pop(context);
+      if (mounted) {
+        Navigator.pop(context);
+      }
     } catch (e) {
-      _showError("Upload failed: $e");
+      _showError("Failed to add product: $e");
     } finally {
-      setState(() => _isUploading = false);
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
     }
   }
 
@@ -136,13 +146,25 @@ class _AddProductPageState extends State<AddProductPage> {
       backgroundColor: background,
       appBar: AppBar(
         backgroundColor: maroon,
-        title: const Text("Add Product", style: TextStyle(color: Colors.white)),
+        title:
+        const Text("Add Product", style: TextStyle(color: Colors.white)),
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
+      body: _isUploading
+          ? const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 16),
+              Text("Uploading product...",
+                  style: TextStyle(color: Colors.white70))
+            ],
+          ))
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
@@ -150,23 +172,24 @@ class _AddProductPageState extends State<AddProductPage> {
             children: [
               _buildTextField(_nameController, 'Product Name'),
               const SizedBox(height: 16),
-              _buildTextField(_descriptionController, 'Description', maxLines: 4),
+              _buildTextField(_descriptionController, 'Description',
+                  maxLines: 4),
               const SizedBox(height: 16),
-              _buildTextField(_priceController, 'Initial Price', keyboardType: TextInputType.number),
+              _buildTextField(_priceController, 'Price',
+                  keyboardType: TextInputType.number),
               const SizedBox(height: 16),
               _buildTextField(_sizeController, 'Size'),
               const SizedBox(height: 16),
               _buildTextField(_colorController, 'Color'),
               const SizedBox(height: 16),
-
-              /// Dropdown for category
               DropdownButtonFormField<String>(
                 dropdownColor: const Color(0xFF2B222A),
                 value: _selectedCategory,
                 items: _categories.map((cat) {
                   return DropdownMenuItem(
                     value: cat,
-                    child: Text(cat, style: const TextStyle(color: Colors.white)),
+                    child: Text(cat,
+                        style: const TextStyle(color: Colors.white)),
                   );
                 }).toList(),
                 decoration: InputDecoration(
@@ -178,14 +201,15 @@ class _AddProductPageState extends State<AddProductPage> {
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
                 ),
-                validator: (value) => value == null ? 'Please select a category' : null,
-                onChanged: (val) => setState(() => _selectedCategory = val),
+                validator: (value) =>
+                value == null ? 'Please select a category' : null,
+                onChanged: (val) =>
+                    setState(() => _selectedCategory = val),
               ),
               const SizedBox(height: 24),
-
-              /// Upload Images Section
               GestureDetector(
                 onTap: _pickImages,
                 child: Container(
@@ -208,7 +232,8 @@ class _AddProductPageState extends State<AddProductPage> {
                         padding: const EdgeInsets.all(8.0),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.file(_imageFiles[index], width: 150, fit: BoxFit.cover),
+                          child: Image.file(_imageFiles[index],
+                              width: 150, fit: BoxFit.cover),
                         ),
                       );
                     },
@@ -216,21 +241,20 @@ class _AddProductPageState extends State<AddProductPage> {
                 ),
               ),
               const SizedBox(height: 30),
-
-              /// Save Button
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: maroon,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: _isUploading ? null : _saveProduct,
-                  child: _isUploading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Save Product",
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: const Text("Save Product",
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -247,7 +271,7 @@ class _AddProductPageState extends State<AddProductPage> {
       style: const TextStyle(color: Colors.white),
       maxLines: maxLines,
       keyboardType: keyboardType,
-      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+      validator: (val) => val == null || val.isEmpty ? 'This field is required' : null,
       decoration: InputDecoration(
         filled: true,
         fillColor: const Color(0xFF2B222A),
@@ -257,7 +281,8 @@ class _AddProductPageState extends State<AddProductPage> {
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
     );
   }

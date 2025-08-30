@@ -6,6 +6,7 @@ class CategoryProductsPage extends StatelessWidget {
 
   const CategoryProductsPage({super.key, required this.category});
 
+  // UI Colors and Styles
   static const Color bgColor = Color(0xFF101625);
   static const Color boxColor = Color(0xFF70142C);
   static const Color textColor = Colors.white;
@@ -24,9 +25,11 @@ class CategoryProductsPage extends StatelessWidget {
         iconTheme: const IconThemeData(color: textColor),
       ),
       body: StreamBuilder<QuerySnapshot>(
+        // Fetches approved products from the correct category
         stream: FirebaseFirestore.instance
             .collection('products')
             .where('category', isEqualTo: category)
+            .where('isApproved', isEqualTo: true) // Logic from the second version
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -44,7 +47,7 @@ class CategoryProductsPage extends StatelessWidget {
             );
           }
 
-          final docs = snapshot.data!.docs;
+          final docs = snapshot.data?.docs ?? [];
 
           if (docs.isEmpty) {
             return const Center(
@@ -67,9 +70,10 @@ class CategoryProductsPage extends StatelessWidget {
             itemBuilder: (context, index) {
               final data = docs[index].data() as Map<String, dynamic>?;
 
-              if (data == null) return const SizedBox();
+              if (data == null) return const SizedBox.shrink();
 
-              final title = data['title'] ?? 'No Title';
+              // Correctly uses 'name' instead of 'title'
+              final title = data['name'] ?? 'No Title';
               final price = data['price'] ?? 'N/A';
               final imageUrls = data['imageUrls'];
 
@@ -94,6 +98,12 @@ class CategoryProductsPage extends StatelessWidget {
                           imageUrls[0],
                           fit: BoxFit.cover,
                           width: double.infinity,
+                          errorBuilder: (context, error, stackTrace) =>
+                          const Icon(
+                            Icons.broken_image,
+                            size: 60,
+                            color: Colors.white38,
+                          ),
                         )
                             : const Icon(
                           Icons.image_not_supported,

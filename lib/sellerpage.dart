@@ -1,9 +1,8 @@
 import 'package:auctora/AddProductPage.dart';
 import 'package:auctora/homepage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'homepage.dart'; // Make sure this is correct
-import 'AddProductPage.dart';
 
 class SellerPage extends StatefulWidget {
   const SellerPage({super.key});
@@ -13,16 +12,21 @@ class SellerPage extends StatefulWidget {
 }
 
 class _SellerPageState extends State<SellerPage> {
+  // --- UI Colors ---
   final Color darkBackground = const Color(0xFF0F172A);
   final Color maroon = const Color(0xFF70142C);
+  final Color cardColor = const Color(0xFF1E293B);
   final Color white = Colors.white;
 
+  // --- State Variables ---
   final TextEditingController _searchController = TextEditingController();
   String _searchTerm = '';
+  User? _currentUser;
 
   @override
   void initState() {
     super.initState();
+    _currentUser = FirebaseAuth.instance.currentUser;
     _searchController.addListener(() {
       setState(() {
         _searchTerm = _searchController.text.trim().toLowerCase();
@@ -36,6 +40,8 @@ class _SellerPageState extends State<SellerPage> {
     super.dispose();
   }
 
+  // --- Helper Methods ---
+
   // Filter products by search term
   List<QueryDocumentSnapshot> _filterProducts(
       List<QueryDocumentSnapshot> products) {
@@ -47,125 +53,61 @@ class _SellerPageState extends State<SellerPage> {
     }).toList();
   }
 
+  // Show a snackbar for unimplemented features
+  void _showNotImplemented(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Feature not implemented yet.')),
+    );
+  }
+
+  // --- Build Methods ---
+
   @override
   Widget build(BuildContext context) {
+    if (_currentUser == null) {
+      return Scaffold(
+        backgroundColor: darkBackground,
+        appBar: AppBar(
+          title: const Text('My Products'),
+          backgroundColor: darkBackground,
+        ),
+        body: const Center(
+          child: Text(
+            'Please log in to see your products.',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pop(context); // simple pop back to ChooseRolePage
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const ChooseRolePage()),
+              (Route<dynamic> route) => false,
+        );
         return false;
       },
       child: Scaffold(
         backgroundColor: darkBackground,
-        drawer: Drawer(
-          backgroundColor: darkBackground,
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              DrawerHeader(
-                decoration: BoxDecoration(color: maroon),
-                child: Center(
-                  child: Text(
-                    'Seller Menu',
-                    style: TextStyle(
-                      color: white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              _drawerItem(Icons.home, "Home", () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ChooseRolePage()),
-                );
-              }),
-              _drawerItem(Icons.shopping_cart, "My Orders", () {
-                Navigator.pop(context);
-                // TODO: Implement navigation to My Orders page
-                _showNotImplemented(context);
-              }),
-              _drawerItem(Icons.favorite, "Wishlist", () {
-                Navigator.pop(context);
-                // TODO: Implement navigation to Wishlist page
-                _showNotImplemented(context);
-              }),
-              _drawerItem(Icons.notifications, "Notifications", () {
-                Navigator.pop(context);
-                // TODO: Implement navigation to Notifications page
-                _showNotImplemented(context);
-              }),
-              _drawerItem(Icons.receipt_long, "Transactions", () {
-                Navigator.pop(context);
-                // TODO: Implement navigation to Transactions page
-                _showNotImplemented(context);
-              }),
-              _drawerItem(Icons.local_shipping, "Track Delivery", () {
-                Navigator.pop(context);
-                // TODO: Implement navigation to Track Delivery page
-                _showNotImplemented(context);
-              }),
-              _drawerItem(Icons.support_agent, "Support / Chat Seller", () {
-                Navigator.pop(context);
-                // TODO: Implement navigation to Support / Chat Seller page
-                _showNotImplemented(context);
-              }),
-              _drawerItem(Icons.settings, "Settings", () {
-                Navigator.pop(context);
-                // TODO: Implement navigation to Settings page
-                _showNotImplemented(context);
-              }),
-            ],
-          ),
-        ),
-        appBar: AppBar(
-          backgroundColor: darkBackground,
-          iconTheme: const IconThemeData(color: Colors.white),
-          title: Row(
-            children: const [
-              Icon(Icons.gavel, color: Colors.amber),
-              SizedBox(width: 8),
-              Text(
-                'AuctionHouse',
-                style: TextStyle(color: Colors.white),
-              ),
-            ],
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.notifications, color: Colors.white),
-              onPressed: () {
-                // TODO: Notifications action
-                _showNotImplemented(context);
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.account_circle, color: Colors.white),
-              onPressed: () {
-                // TODO: Profile action
-                _showNotImplemented(context);
-              },
-            ),
-          ],
-        ),
+        drawer: _buildDrawer(),
+        appBar: _buildAppBar(),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildSearchBar(),
               const SizedBox(height: 20),
               _buildDashboardButtons(),
               const SizedBox(height: 24),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "Products I Listed",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: white,
-                  ),
+              Text(
+                "My Listed Products",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: white,
                 ),
               ),
               const SizedBox(height: 12),
@@ -173,6 +115,60 @@ class _SellerPageState extends State<SellerPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  AppBar _buildAppBar() {
+    return AppBar(
+      backgroundColor: darkBackground,
+      iconTheme: const IconThemeData(color: Colors.white),
+      title: const Row(
+        children: [
+          Icon(Icons.gavel, color: Colors.amber),
+          SizedBox(width: 8),
+          Text('AuctionHouse', style: TextStyle(color: Colors.white)),
+        ],
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.notifications, color: Colors.white),
+          onPressed: () => _showNotImplemented(context),
+        ),
+        IconButton(
+          icon: const Icon(Icons.account_circle, color: Colors.white),
+          onPressed: () => _showNotImplemented(context),
+        ),
+      ],
+    );
+  }
+
+  Drawer _buildDrawer() {
+    return Drawer(
+      backgroundColor: darkBackground,
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(color: maroon),
+            child: Center(
+              child: Text('Seller Menu',
+                  style: TextStyle(
+                      color: white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold)),
+            ),
+          ),
+          _drawerItem(Icons.home, "Home", () {
+            Navigator.pop(context);
+            Navigator.pushReplacement(
+                context, MaterialPageRoute(builder: (_) => const ChooseRolePage()));
+          }),
+          _drawerItem(
+              Icons.shopping_cart, "My Orders", () => _showNotImplemented(context)),
+          _drawerItem(
+              Icons.favorite, "Wishlist", () => _showNotImplemented(context)),
+        ],
       ),
     );
   }
@@ -189,7 +185,7 @@ class _SellerPageState extends State<SellerPage> {
     return TextField(
       controller: _searchController,
       decoration: InputDecoration(
-        hintText: 'Search products...',
+        hintText: 'Search my products...',
         prefixIcon: const Icon(Icons.search, color: Colors.white70),
         filled: true,
         fillColor: Colors.black26,
@@ -204,15 +200,7 @@ class _SellerPageState extends State<SellerPage> {
   }
 
   Widget _buildDashboardButtons() {
-    final List<Map<String, dynamic>> buttons = [
-      {"icon": Icons.add_shopping_cart, "label": "Add Products"},
-      {"icon": Icons.add_circle_outline, "label": "Create Auction"},
-      {"icon": Icons.live_tv, "label": "Check my live Auction"},
-      {"icon": Icons.inventory_2, "label": "Product I listed"},
-    ];
-
-    return GridView.builder(
-      itemCount: buttons.length,
+    return GridView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -221,67 +209,76 @@ class _SellerPageState extends State<SellerPage> {
         mainAxisSpacing: 12,
         childAspectRatio: 1.2,
       ),
-      itemBuilder: (context, index) {
-        return GestureDetector(
+      children: [
+        _dashboardButton(
+          icon: Icons.add_shopping_cart,
+          label: "Add Product",
           onTap: () {
-            final label = buttons[index]['label'];
-
-            if (label == "Add Products") {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AddProductPage()),
-              );
-            } else if (label == "Create Auction") {
-              _showNotImplemented(context); // Replace when you build the page
-            } else if (label == "Check my live Auction") {
-              _showNotImplemented(context); // Replace when ready
-            } else if (label == "Product I listed") {
-              _showNotImplemented(context); // Replace when you make the page
-            }
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const AddProductPage()));
           },
-          child: Container(
-            decoration: BoxDecoration(
-              color: maroon,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(buttons[index]['icon'], color: white, size: 36),
-                  const SizedBox(height: 10),
-                  Text(
-                    buttons[index]['label'],
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+        ),
+        _dashboardButton(
+          icon: Icons.add_circle_outline,
+          label: "Create Auction",
+          onTap: () => _showNotImplemented(context),
+        ),
+      ],
     );
   }
 
+  Widget _dashboardButton(
+      {required IconData icon,
+        required String label,
+        required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: maroon,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: white, size: 36),
+            const SizedBox(height: 10),
+            Text(label,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildProductGrid() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('products').snapshots(),
+      // Fetches only products listed by the current user
+      stream: FirebaseFirestore.instance
+          .collection('products')
+          .where('userId', isEqualTo: _currentUser!.uid)
+          .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Center(child: Text('Error loading products', style: TextStyle(color: white)));
+          return Center(
+              child: Text('Error: ${snapshot.error}',
+                  style: TextStyle(color: white)));
         }
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Center(child: Text('No products listed yet.', style: TextStyle(color: white)));
+          return Center(
+              child: Text('You have not added any products yet.',
+                  style: TextStyle(color: white)));
         }
 
         final products = _filterProducts(snapshot.data!.docs);
         if (products.isEmpty) {
-          return Center(child: Text('No products match your search.', style: TextStyle(color: white)));
+          return Center(
+              child: Text('No products match your search.',
+                  style: TextStyle(color: white)));
         }
 
         return GridView.builder(
@@ -290,16 +287,20 @@ class _SellerPageState extends State<SellerPage> {
             crossAxisCount: 2,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 0.85,
+            childAspectRatio: 0.8,
           ),
           itemBuilder: (context, index) {
-            final product = products[index].data() as Map<String, dynamic>;
-            final name = product['name'] ?? 'Unnamed product';
-            final bid = product['bid'] ?? 'N/A';
-            final imageUrl = product['imageUrl'] as String?;
+            final data = products[index].data() as Map<String, dynamic>;
+            final name = data['name'] ?? 'No Name';
+            final isApproved = data['isApproved'] ?? false;
+            final imageUrls = data['imageUrls'] as List?;
+            final imageUrl = (imageUrls != null && imageUrls.isNotEmpty)
+                ? imageUrls[0]
+                : null;
+
             return Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
+                color: cardColor,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -307,16 +308,19 @@ class _SellerPageState extends State<SellerPage> {
                 children: [
                   Expanded(
                     child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      child: imageUrl != null && imageUrl.isNotEmpty
-                          ? Image.network(
-                        imageUrl,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                        const Icon(Icons.broken_image, size: 50, color: Colors.white30),
-                      )
-                          : const Icon(Icons.image_not_supported, size: 50, color: Colors.white30),
+                      borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(16)),
+                      child: imageUrl != null
+                          ? Image.network(imageUrl,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(
+                              Icons.broken_image,
+                              size: 50,
+                              color: Colors.white30))
+                          : const Center(
+                          child: Icon(Icons.image_not_supported,
+                              size: 50, color: Colors.white30)),
                     ),
                   ),
                   Padding(
@@ -324,17 +328,27 @@ class _SellerPageState extends State<SellerPage> {
                     child: Text(
                       name,
                       style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white),
+                          fontWeight: FontWeight.bold, color: Colors.white),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Text(
-                      "Current Bid: $bid",
-                      style: const TextStyle(color: Colors.white70),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isApproved ? Icons.check_circle : Icons.hourglass_empty,
+                          color: isApproved ? Colors.green : Colors.orange,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isApproved ? 'Approved' : 'Pending',
+                          style: TextStyle(
+                              color: isApproved ? Colors.green : Colors.orange),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -344,12 +358,6 @@ class _SellerPageState extends State<SellerPage> {
           },
         );
       },
-    );
-  }
-
-  void _showNotImplemented(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Feature not implemented yet.')),
     );
   }
 }
