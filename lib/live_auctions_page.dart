@@ -75,7 +75,6 @@ class _LiveAuctionsPageState extends State<LiveAuctionsPage> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
@@ -171,21 +170,6 @@ class _LiveAuctionsPageState extends State<LiveAuctionsPage> {
     return query.snapshots();
   }
 
-  Widget _buildBottomNavBar() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: cardDark,
-      selectedItemColor: accentRed,
-      unselectedItemColor: greyText,
-      currentIndex: 2,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-        BottomNavigationBarItem(icon: Icon(Icons.gavel), label: 'Auctions'),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-      ],
-    );
-  }
 }
 
 class AuctionListItem extends StatefulWidget {

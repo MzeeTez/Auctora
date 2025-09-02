@@ -4,10 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'WelcomeScreen.dart';
 import 'forgot_password_screen.dart';
 import 'signup_screen.dart';
-import 'homepage.dart';
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 

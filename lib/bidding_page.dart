@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 
 class BiddingPage extends StatefulWidget {
@@ -18,6 +19,7 @@ class _BiddingPageState extends State<BiddingPage> {
   int _currentPage = 0;
   Timer? _timer;
   Duration _timeLeft = Duration.zero;
+  bool _isPlacingBid = false;
 
   @override
   void initState() {
@@ -26,7 +28,8 @@ class _BiddingPageState extends State<BiddingPage> {
   }
 
   void _startAuctionTimer() {
-    final auctionRef = FirebaseFirestore.instance.collection('auctions').doc(widget.auctionId);
+    final auctionRef =
+    FirebaseFirestore.instance.collection('auctions').doc(widget.auctionId);
     auctionRef.snapshots().listen((snapshot) {
       if (snapshot.exists) {
         final data = snapshot.data() as Map<String, dynamic>;
@@ -57,6 +60,77 @@ class _BiddingPageState extends State<BiddingPage> {
     });
   }
 
+  Future<void> _placeBid() async {
+    if (_isPlacingBid) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be logged in to place a bid.')),
+      );
+      return;
+    }
+
+    final amount = double.tryParse(_bidController.text);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid bid amount.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isPlacingBid = true;
+    });
+
+    final auctionRef =
+    FirebaseFirestore.instance.collection('auctions').doc(widget.auctionId);
+
+    try {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final snapshot = await transaction.get(auctionRef);
+        if (!snapshot.exists) {
+          throw Exception("Auction does not exist!");
+        }
+
+        final auctionData = snapshot.data() as Map<String, dynamic>;
+        final currentBid = auctionData['currentBid'] ?? 0.0;
+
+        if (amount <= currentBid) {
+          throw Exception('Your bid must be higher than the current bid.');
+        }
+
+        transaction.update(auctionRef, {
+          'currentBid': amount,
+          'highestBidderId': user.uid,
+        });
+
+        // Optionally, add the bid to a 'bids' subcollection for history
+        final bidHistoryRef = auctionRef.collection('bids').doc();
+        transaction.set(bidHistoryRef, {
+          'userId': user.uid,
+          'amount': amount,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bid placed successfully!')),
+      );
+      _bidController.clear();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to place bid: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPlacingBid = false;
+        });
+      }
+    }
+  }
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -71,21 +145,29 @@ class _BiddingPageState extends State<BiddingPage> {
       backgroundColor: const Color(0xFF121212),
       appBar: _buildAppBar(),
       body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance.collection('auctions').doc(widget.auctionId).snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection('auctions')
+            .doc(widget.auctionId)
+            .snapshots(),
         builder: (context, auctionSnapshot) {
           if (!auctionSnapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final auctionData = auctionSnapshot.data!.data() as Map<String, dynamic>;
+          final auctionData =
+          auctionSnapshot.data!.data() as Map<String, dynamic>;
           final productId = auctionData['productId'];
 
           return FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance.collection('products').doc(productId).get(),
+            future: FirebaseFirestore.instance
+                .collection('products')
+                .doc(productId)
+                .get(),
             builder: (context, productSnapshot) {
               if (!productSnapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final productData = productSnapshot.data!.data() as Map<String, dynamic>;
+              final productData =
+              productSnapshot.data!.data() as Map<String, dynamic>;
 
               return Column(
                 children: [
@@ -94,7 +176,8 @@ class _BiddingPageState extends State<BiddingPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildImageCarousel(productData['imageUrls'] as List<dynamic>?),
+                          _buildImageCarousel(
+                              productData['imageUrls'] as List<dynamic>?),
                           Padding(
                             padding: const EdgeInsets.all(16.0),
                             child: Column(
@@ -102,12 +185,16 @@ class _BiddingPageState extends State<BiddingPage> {
                               children: [
                                 Text(
                                   productData['name'] ?? 'No Name',
-                                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
+                                  style: const TextStyle(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white),
                                 ),
                                 const SizedBox(height: 4),
                                 const Text(
                                   "by Swiss Timeless Co.",
-                                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                                  style: TextStyle(
+                                      fontSize: 16, color: Colors.grey),
                                 ),
                                 const SizedBox(height: 24),
                                 _buildTimerSection(),
@@ -118,12 +205,19 @@ class _BiddingPageState extends State<BiddingPage> {
                                 const SizedBox(height: 16),
                                 const Text(
                                   "Description",
-                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  productData['description'] ?? 'No description available.',
-                                  style: const TextStyle(color: Colors.white70, fontSize: 16, height: 1.5),
+                                  productData['description'] ??
+                                      'No description available.',
+                                  style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 16,
+                                      height: 1.5),
                                 ),
                               ],
                             ),
@@ -139,7 +233,6 @@ class _BiddingPageState extends State<BiddingPage> {
           );
         },
       ),
-      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
@@ -173,7 +266,8 @@ class _BiddingPageState extends State<BiddingPage> {
               },
               itemBuilder: (context, index) {
                 if (imageUrls!.isEmpty) {
-                  return const Icon(Icons.image, size: 100, color: Colors.grey);
+                  return const Icon(Icons.image,
+                      size: 100, color: Colors.grey);
                 }
                 return Image.network(imageUrls[index], fit: BoxFit.cover);
               },
@@ -260,7 +354,8 @@ class _BiddingPageState extends State<BiddingPage> {
             ),
           ],
         ),
-        const Text("15 bids", style: TextStyle(color: Colors.grey)), // Placeholder
+        const Text("15 bids",
+            style: TextStyle(color: Colors.grey)), // Placeholder
       ],
     );
   }
@@ -274,7 +369,8 @@ class _BiddingPageState extends State<BiddingPage> {
           Expanded(
             child: TextField(
               controller: _bidController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+              const TextInputType.numberWithOptions(decimal: true),
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 prefixIcon:
@@ -292,15 +388,25 @@ class _BiddingPageState extends State<BiddingPage> {
           ),
           const SizedBox(width: 12),
           ElevatedButton(
-            onPressed: () {},
+            onPressed: _isPlacingBid ? null : _placeBid,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF8B1E3F),
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text("Place Bid",
+            child: _isPlacingBid
+                ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+                : const Text("Place Bid",
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -308,22 +414,6 @@ class _BiddingPageState extends State<BiddingPage> {
           )
         ],
       ),
-    );
-  }
-
-  Widget _buildBottomNavBar() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: const Color(0xFF1F1F1F),
-      selectedItemColor: const Color(0xFF8B1E3F),
-      unselectedItemColor: Colors.grey,
-      currentIndex: 2, // 'Auctions' tab is active
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-        BottomNavigationBarItem(icon: Icon(Icons.gavel), label: 'Auctions'),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-      ],
     );
   }
 }
