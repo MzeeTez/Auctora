@@ -1,4 +1,6 @@
 import 'package:auctora/OldAntiquePage.dart';
+import 'package:auctora/product_info_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'homepage.dart';
@@ -199,36 +201,26 @@ class BuyerPage extends StatelessWidget {
 
   Widget _buildRecommendedList() {
     return SizedBox(
-      height: 200,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: 6, // Placeholder
-        itemBuilder: (context, index) {
-          return Container(
-            width: 140,
-            margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              color: cardDark,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.image, size: 60, color: Colors.grey),
-                  SizedBox(height: 8),
-                  Text("Vintage Item",
-                      style: TextStyle(
-                          color: whiteText, fontWeight: FontWeight.bold)),
-                  Text("Current Bid: \$150",
-                      style: TextStyle(color: accentYellow)),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+      height: 220,
+      child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('products')
+              .where('isApproved', isEqualTo: true)
+              .limit(6)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final products = snapshot.data!.docs;
+            return ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: products.length,
+              itemBuilder: (context, index) {
+                return _RecommendedItem(productDocument: products[index]);
+              },
+            );
+          }),
     );
   }
 }
@@ -274,6 +266,78 @@ class _CategoryCard extends StatelessWidget {
             Text(title,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecommendedItem extends StatelessWidget {
+  final DocumentSnapshot productDocument;
+
+  const _RecommendedItem({required this.productDocument});
+
+  @override
+  Widget build(BuildContext context) {
+    final productData = productDocument.data() as Map<String, dynamic>;
+    final imageUrls = productData['imageUrls'] as List?;
+    final imageUrl =
+    (imageUrls != null && imageUrls.isNotEmpty) ? imageUrls[0] : null;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                ProductInfoPage(productDocument: productDocument),
+          ),
+        );
+      },
+      child: Container(
+        width: 150,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: BuyerPage.cardDark,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                child: imageUrl != null
+                    ? Image.network(imageUrl,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.broken_image, size: 50))
+                    : const Center(
+                    child: Icon(Icons.image_not_supported, size: 50)),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                productData['name'] ?? 'No Name',
+                style: const TextStyle(
+                  color: BuyerPage.whiteText,
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Text(
+                '₹${productData['price']}',
+                style: const TextStyle(color: BuyerPage.accentYellow),
+              ),
+            ),
+            const SizedBox(height: 8),
           ],
         ),
       ),

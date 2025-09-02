@@ -1,3 +1,4 @@
+import 'package:auctora/product_info_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -62,13 +63,14 @@ class CategoryProductsPage extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.72,
+              childAspectRatio: 0.6,
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
             ),
             itemCount: docs.length,
             itemBuilder: (context, index) {
-              final data = docs[index].data() as Map<String, dynamic>?;
+              final productDocument = docs[index];
+              final data = productDocument.data() as Map<String, dynamic>?;
 
               if (data == null) return const SizedBox.shrink();
 
@@ -135,6 +137,19 @@ class CategoryProductsPage extends StatelessWidget {
                               fontSize: 13,
                             ),
                           ),
+                          const SizedBox(height: 8),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ProductInfoPage(
+                                      productDocument: productDocument),
+                                ),
+                              );
+                            },
+                            child: const Text("See Description"),
+                          )
                         ],
                       ),
                     ),
