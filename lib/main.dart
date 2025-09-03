@@ -2,9 +2,11 @@ import 'package:auctora/homepage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import 'WelcomeScreen.dart';
 import 'firebase_options.dart';
+import 'no_internet_page.dart'; // Import the new page
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,25 +35,38 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: AuthWrapper(), // 👈 Replace with this widget
+      home: AuthWrapper(),
     );
   }
 }
 
-/// This widget decides which screen to show based on login state
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
-    User? user = FirebaseAuth.instance.currentUser;
+    return StreamBuilder<List<ConnectivityResult>>(
+      stream: Connectivity().onConnectivityChanged,
+      builder: (context, snapshot) {
+        // Handle initial state and errors
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: CircularProgressIndicator()); // Or a splash screen
+        }
 
-    if (user != null) {
-      // 👤 User is signed in
-      return const ChooseRolePage(); // 🔁 Replace with your real post-login screen
-    } else {
-      // 🙅‍♂️ Not signed in
-      return const WelcomeScreen();
-    }
+        // Check if 'none' is in the list of connectivity results
+        final isOffline = snapshot.data!.contains(ConnectivityResult.none);
+
+        if (isOffline) {
+          return const NoInternetPage();
+        }
+
+        User? user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          return const ChooseRolePage();
+        } else {
+          return const WelcomeScreen();
+        }
+      },
+    );
   }
 }

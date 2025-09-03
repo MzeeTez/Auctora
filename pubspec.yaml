@@ -9,7 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
+  connectivity_plus: ^6.0.3
   firebase_core: ^2.27.0
   firebase_auth: ^4.17.4
   cloud_firestore: ^4.15.5

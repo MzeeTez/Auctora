@@ -1,6 +1,7 @@
 import 'package:auctora/checkout_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ProductInfoPage extends StatefulWidget {
   final DocumentSnapshot productDocument;
@@ -12,7 +13,99 @@ class ProductInfoPage extends StatefulWidget {
 }
 
 class _ProductInfoPageState extends State<ProductInfoPage> {
-  bool isFavorite = false;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool _isInWishlist = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfInWishlist();
+  }
+
+  Future<void> _checkIfInWishlist() async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      final productId = widget.productDocument.id;
+      DocumentSnapshot doc = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('wishlist')
+          .doc(productId)
+          .get();
+      if (mounted) {
+        setState(() {
+          _isInWishlist = doc.exists;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleWishlist() async {
+    User? user = _auth.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to use the wishlist.')),
+      );
+      return;
+    }
+
+    final productId = widget.productDocument.id;
+    final wishlistRef = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('wishlist')
+        .doc(productId);
+
+    if (_isInWishlist) {
+      await wishlistRef.delete();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Removed from wishlist.')),
+      );
+    } else {
+      await wishlistRef.set({'productId': productId});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Added to wishlist.')),
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        _isInWishlist = !_isInWishlist;
+      });
+    }
+  }
+
+  // --- Add to Cart Logic ---
+  Future<void> _addToCart() async {
+    User? user = _auth.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to add items to your cart.')),
+      );
+      return;
+    }
+
+    final productId = widget.productDocument.id;
+    final cartRef = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('cart')
+        .doc(productId);
+
+    await cartRef.set({
+      'productId': productId,
+      'addedAt': Timestamp.now(),
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Added to Cart!'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -28,22 +121,10 @@ class _ProductInfoPageState extends State<ProductInfoPage> {
         actions: [
           IconButton(
             icon: Icon(
-              isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: isFavorite ? Colors.red : Colors.white,
+              _isInWishlist ? Icons.favorite : Icons.favorite_border,
+              color: _isInWishlist ? Colors.red : Colors.white,
             ),
-            onPressed: () {
-              setState(() {
-                isFavorite = !isFavorite;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(isFavorite
-                      ? 'Added to Wishlist'
-                      : 'Removed from Wishlist'),
-                  duration: const Duration(seconds: 1),
-                ),
-              );
-            },
+            onPressed: _toggleWishlist,
           ),
         ],
       ),
@@ -136,15 +217,7 @@ class _ProductInfoPageState extends State<ProductInfoPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {
-                    // Placeholder for Add to Cart functionality
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Added to Cart!'),
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
-                  },
+                  onPressed: _addToCart, // Connects to the Firestore function
                   child: const Text(
                     'Add to Cart',
                     style: TextStyle(fontSize: 18, color: Colors.white),
@@ -235,13 +308,10 @@ class _ProductInfoPageState extends State<ProductInfoPage> {
               fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         const SizedBox(height: 16),
-        // --- Sample Comment 1 ---
         _buildCommentItem('Alex', 'This is an amazing product! Highly recommend.'),
         const Divider(color: Colors.grey),
-        // --- Sample Comment 2 ---
         _buildCommentItem('Maria', 'Great value for the price. Very satisfied.'),
         const SizedBox(height: 24),
-        // --- Add a Comment ---
         TextField(
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
@@ -257,9 +327,7 @@ class _ProductInfoPageState extends State<ProductInfoPage> {
         ),
         const SizedBox(height: 8),
         ElevatedButton(
-          onPressed: () {
-            // Placeholder for submitting a comment
-          },
+          onPressed: () {},
           child: const Text('Submit Comment'),
         ),
       ],

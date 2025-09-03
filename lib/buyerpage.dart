@@ -1,11 +1,13 @@
 import 'package:auctora/OldAntiquePage.dart';
+import 'package:auctora/cart_page.dart';
 import 'package:auctora/product_info_page.dart';
+import 'package:auctora/wishlist_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'homepage.dart';
 import 'NewRefurbishedPage.dart';
-import 'live_auctions_page.dart'; // Import the new live auctions page
+import 'live_auctions_page.dart';
 
 class BuyerPage extends StatelessWidget {
   const BuyerPage({super.key});
@@ -30,7 +32,7 @@ class BuyerPage extends StatelessWidget {
       },
       child: Scaffold(
         backgroundColor: backgroundDark,
-        appBar: _buildAppBar(),
+        appBar: _buildAppBar(context),
         drawer: _buildDrawer(context),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -65,7 +67,7 @@ class BuyerPage extends StatelessWidget {
     );
   }
 
-  AppBar _buildAppBar() {
+  AppBar _buildAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: cardDark,
       elevation: 0,
@@ -80,21 +82,23 @@ class BuyerPage extends StatelessWidget {
           Text("House",
               style: TextStyle(
                   color: accentYellow, fontWeight: FontWeight.bold)),
-          Spacer(),
-          IconButton(
-              icon: Icon(Icons.search),
-              onPressed: null, // Disabled for now
-              color: whiteText),
-          IconButton(
-              icon: Icon(Icons.notifications_none),
-              onPressed: null, // Disabled for now
-              color: whiteText),
-          IconButton(
-              icon: Icon(Icons.person_outline),
-              onPressed: null, // Disabled for now
-              color: whiteText),
         ],
       ),
+      actions: [
+        IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {},
+            color: whiteText),
+        IconButton(
+            icon: const Icon(Icons.shopping_cart_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CartPage()),
+              );
+            },
+            color: whiteText),
+      ],
     );
   }
 
@@ -119,8 +123,18 @@ class BuyerPage extends StatelessWidget {
               );
             },
           ),
-          const _DrawerItem(icon: Icons.shopping_cart, label: "My Orders"),
-          const _DrawerItem(icon: Icons.favorite_border, label: "Wishlist"),
+          const _DrawerItem(icon: Icons.shopping_cart, label: "My Orders", onTap: null,),
+          _DrawerItem(
+            icon: Icons.favorite_border,
+            label: "Wishlist",
+            onTap: () {
+              Navigator.pop(context); // Close the drawer first
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const WishlistPage())
+              );
+            },
+          ),
         ],
       ),
     );
@@ -228,14 +242,16 @@ class BuyerPage extends StatelessWidget {
 class _DrawerItem extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _DrawerItem({required this.icon, required this.label});
+  final VoidCallback? onTap; // Added onTap callback
+
+  const _DrawerItem({required this.icon, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
       leading: Icon(icon, color: Colors.white),
       title: Text(label, style: const TextStyle(color: Colors.white)),
-      onTap: () {}, // Placeholder
+      onTap: onTap, // Use the provided callback
     );
   }
 }
