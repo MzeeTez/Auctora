@@ -8,6 +8,7 @@ import 'package:lottie/lottie.dart';
 import 'homepage.dart';
 import 'NewRefurbishedPage.dart';
 import 'live_auctions_page.dart';
+import 'bidding_page.dart';
 
 class BuyerPage extends StatelessWidget {
   const BuyerPage({super.key});
@@ -76,10 +77,10 @@ class BuyerPage extends StatelessWidget {
         children: const [
           Icon(Icons.gavel, color: accentYellow),
           SizedBox(width: 8),
-          Text("Auction",
+          Text("Auctora",
               style:
               TextStyle(color: whiteText, fontWeight: FontWeight.bold)),
-          Text("House",
+          Text("",
               style: TextStyle(
                   color: accentYellow, fontWeight: FontWeight.bold)),
         ],
@@ -208,8 +209,84 @@ class BuyerPage extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const LiveAuctionsPage()),
               );
             }),
-        _CategoryCard(title: "Customized", icon: Icons.build, onTap: () {}),
+        _CategoryCard(title: "Customized", icon: Icons.build, onTap: () => _showLiveAuctionOptions(context)),
       ],
+    );
+  }
+
+  void _showLiveAuctionOptions(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final codeController = TextEditingController();
+        return AlertDialog(
+          backgroundColor: cardDark,
+          title: const Text("Join an Auction", style: TextStyle(color: whiteText)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Enter a unique code to join a private auction or view all live auctions.",
+                  style: TextStyle(color: greyText)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: codeController,
+                style: const TextStyle(color: whiteText),
+                decoration: InputDecoration(
+                  labelText: "Auction Code",
+                  labelStyle: const TextStyle(color: greyText),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.05),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LiveAuctionsPage()),
+                );
+              },
+              child: const Text("View All", style: TextStyle(color: accentYellow)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final code = codeController.text.trim();
+                if (code.isNotEmpty) {
+                  final auctions = await FirebaseFirestore.instance
+                      .collection('auctions')
+                      .where('auctionCode', isEqualTo: code)
+                      .limit(1)
+                      .get();
+
+                  if (auctions.docs.isNotEmpty) {
+                    final auctionId = auctions.docs.first.id;
+                    Navigator.pop(context); // Close dialog
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => BiddingPage(auctionId: auctionId),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Invalid or expired auction code.')),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: highlightRed),
+              child: const Text("Join", style: TextStyle(color: whiteText)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -242,7 +319,7 @@ class BuyerPage extends StatelessWidget {
 class _DrawerItem extends StatelessWidget {
   final IconData icon;
   final String label;
-  final VoidCallback? onTap; // Added onTap callback
+  final VoidCallback? onTap;
 
   const _DrawerItem({required this.icon, required this.label, this.onTap});
 
@@ -251,7 +328,7 @@ class _DrawerItem extends StatelessWidget {
     return ListTile(
       leading: Icon(icon, color: Colors.white),
       title: Text(label, style: const TextStyle(color: Colors.white)),
-      onTap: onTap, // Use the provided callback
+      onTap: onTap,
     );
   }
 }

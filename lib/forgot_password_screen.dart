@@ -31,7 +31,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Lottie.asset(
-                  'assets/login_bg.json',
+                  'assets/Forget password animation.json',
                   height: 200,
                   repeat: true,
                 ),

@@ -19,7 +19,7 @@ class NoInternetPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Lottie.asset(
-                'assets/animations/login_bg.json', // Placeholder animation
+                'assets/animations/404 not found.json', // Placeholder animation
                 height: 200,
               ),
               const SizedBox(height: 32),

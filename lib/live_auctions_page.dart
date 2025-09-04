@@ -12,9 +12,10 @@ class LiveAuctionsPage extends StatefulWidget {
 
 class _LiveAuctionsPageState extends State<LiveAuctionsPage> {
   String _sortBy = 'endingSoonest'; // Default sort option
+  String _searchTerm = '';
 
   // UI Colors
-  static const Color backgroundDark = Color(0xFF121212);
+  static const Color backgroundDark = Color(0xFF101625);
   static const Color cardDark = Color(0xFF1F1F1F);
   static const Color accentRed = Color(0xFF8B1E3F);
   static const Color whiteText = Colors.white;
@@ -28,7 +29,7 @@ class _LiveAuctionsPageState extends State<LiveAuctionsPage> {
         backgroundColor: backgroundDark,
         elevation: 0,
         foregroundColor: whiteText,
-        title: const Text('Auctions', style: TextStyle(color: whiteText)),
+        title: const Text('Auctions', style: TextStyle(color: whiteText, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: Column(
@@ -80,6 +81,11 @@ class _LiveAuctionsPageState extends State<LiveAuctionsPage> {
 
   Widget _buildSearchBar() {
     return TextField(
+      onChanged: (value) {
+        setState(() {
+          _searchTerm = value;
+        });
+      },
       decoration: InputDecoration(
         hintText: 'Search for items',
         hintStyle: const TextStyle(color: greyText),
@@ -99,6 +105,7 @@ class _LiveAuctionsPageState extends State<LiveAuctionsPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        // Filter button (left)
         Expanded(
           child: OutlinedButton.icon(
             onPressed: () {},
@@ -112,6 +119,7 @@ class _LiveAuctionsPageState extends State<LiveAuctionsPage> {
           ),
         ),
         const SizedBox(width: 16),
+        // Sort dropdown (right)
         Expanded(
           flex: 2,
           child: DropdownButtonFormField<String>(
@@ -159,7 +167,9 @@ class _LiveAuctionsPageState extends State<LiveAuctionsPage> {
   }
 
   Stream<QuerySnapshot> _getAuctionsStream() {
-    Query query = FirebaseFirestore.instance.collection('auctions').where('status', isEqualTo: 'active');
+    Query query = FirebaseFirestore.instance.collection('auctions')
+        .where('status', isEqualTo: 'active')
+        .where('isPrivate', isNotEqualTo: true); // Filter out private auctions
 
     switch (_sortBy) {
       case 'endingSoonest': query = query.orderBy('endTime'); break;
@@ -169,9 +179,9 @@ class _LiveAuctionsPageState extends State<LiveAuctionsPage> {
     }
     return query.snapshots();
   }
-
 }
 
+// Separate StatefulWidget for each list item for better performance with timers
 class AuctionListItem extends StatefulWidget {
   final DocumentSnapshot auctionDoc;
 
@@ -182,6 +192,12 @@ class AuctionListItem extends StatefulWidget {
 }
 
 class _AuctionListItemState extends State<AuctionListItem> {
+  // Define colors here to be accessible within this class
+  static const Color cardDark = Color(0xFF1F1F1F);
+  static const Color accentRed = Color(0xFF8B1E3F);
+  static const Color whiteText = Colors.white;
+  static const Color greyText = Colors.grey;
+
   Timer? _timer;
   Duration _remainingTime = Duration.zero;
   DocumentSnapshot? _productDoc;
@@ -191,7 +207,6 @@ class _AuctionListItemState extends State<AuctionListItem> {
   void initState() {
     super.initState();
     _fetchProductData();
-
     final auctionData = widget.auctionDoc.data() as Map<String, dynamic>?;
     if (auctionData != null && auctionData.containsKey('endTime')) {
       final endTime = (auctionData['endTime'] as Timestamp).toDate();
@@ -206,7 +221,6 @@ class _AuctionListItemState extends State<AuctionListItem> {
       if (mounted) setState(() => _isLoading = false);
       return;
     }
-
     final productId = auctionData['productId'];
     try {
       final doc = await FirebaseFirestore.instance.collection('products').doc(productId).get();
@@ -218,7 +232,6 @@ class _AuctionListItemState extends State<AuctionListItem> {
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
-      // You can handle or log the error here
     }
   }
 
@@ -251,17 +264,17 @@ class _AuctionListItemState extends State<AuctionListItem> {
     if (_isLoading) {
       return _buildLoadingCard();
     }
-
     final auctionData = widget.auctionDoc.data() as Map<String, dynamic>?;
     if (auctionData == null) return _buildErrorCard('Invalid auction data');
-
     if (_productDoc == null || !_productDoc!.exists) {
       return _buildErrorCard('Product not found for ID: ${auctionData['productId']}');
     }
-
     final productData = _productDoc!.data() as Map<String, dynamic>;
     final imageUrls = productData['imageUrls'] as List<dynamic>?;
     final firstImage = (imageUrls != null && imageUrls.isNotEmpty) ? imageUrls[0] : null;
+
+    // Use a safe cast to double for the current bid
+    final currentBid = (auctionData['currentBid'] ?? 0).toDouble();
 
     return GestureDetector(
       onTap: () {
@@ -276,53 +289,70 @@ class _AuctionListItemState extends State<AuctionListItem> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: _LiveAuctionsPageState.cardDark,
+          color: cardDark,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           children: [
+            // Product Image Section
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: SizedBox(
-                width: 80, height: 80,
+                width: 80,
+                height: 80,
                 child: firstImage != null
                     ? Image.network(
-                  firstImage, fit: BoxFit.cover,
-                  errorBuilder: (c, e, s) => const Icon(Icons.broken_image, size: 40, color: _LiveAuctionsPageState.greyText),
+                  firstImage,
+                  fit: BoxFit.cover,
+                  errorBuilder: (c, e, s) => const Icon(
+                      Icons.broken_image,
+                      size: 40,
+                      color: greyText),
                 )
-                    : const Icon(Icons.image_not_supported, size: 50, color: _LiveAuctionsPageState.greyText),
+                    : const Icon(Icons.image_not_supported,
+                    size: 50, color: greyText),
               ),
             ),
             const SizedBox(width: 16),
+            // Product Info Section
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     productData['name'] ?? 'Unknown Item',
-                    style: const TextStyle(color: _LiveAuctionsPageState.whiteText, fontSize: 16, fontWeight: FontWeight.bold),
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: whiteText,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Current Bid: \$${auctionData['currentBid']?.toStringAsFixed(0) ?? '0'}',
-                    style: const TextStyle(color: _LiveAuctionsPageState.greyText, fontSize: 14),
+                    'Current Bid: \$${currentBid.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                        color: greyText, fontSize: 14),
                   ),
                 ],
               ),
             ),
+            // Time Remaining Section
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
                   _formatRemainingTime(_remainingTime),
                   style: TextStyle(
-                    color: _remainingTime.inSeconds <= 0 ? Colors.red : _LiveAuctionsPageState.accentRed,
-                    fontSize: 14, fontWeight: FontWeight.w600,
+                    color: _remainingTime.inSeconds <= 0
+                        ? Colors.red
+                        : accentRed,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text('remaining', style: TextStyle(color: _LiveAuctionsPageState.greyText, fontSize: 12)),
+                Text('remaining', style: TextStyle(color: greyText.withOpacity(0.6), fontSize: 12)),
               ],
             ),
           ],
@@ -336,23 +366,36 @@ class _AuctionListItemState extends State<AuctionListItem> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: _LiveAuctionsPageState.cardDark,
+        color: cardDark,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: const SizedBox(width: 80, height: 80, child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: _LiveAuctionsPageState.accentRed))),
+            child: const SizedBox(
+              width: 80,
+              height: 80,
+              child: Center(
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: accentRed),
+              ),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(width: 120, height: 16, color: Colors.grey.withOpacity(0.3)),
+                Container(
+                    width: 120,
+                    height: 16,
+                    color: Colors.grey.withOpacity(0.3)),
                 const SizedBox(height: 8),
-                Container(width: 80, height: 14, color: Colors.grey.withOpacity(0.2)),
+                Container(
+                    width: 80,
+                    height: 14,
+                    color: Colors.grey.withOpacity(0.2)),
               ],
             ),
           ),
@@ -366,7 +409,7 @@ class _AuctionListItemState extends State<AuctionListItem> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: _LiveAuctionsPageState.cardDark,
+        color: cardDark,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -376,7 +419,8 @@ class _AuctionListItemState extends State<AuctionListItem> {
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: _LiveAuctionsPageState.whiteText, fontSize: 14),
+              style: const TextStyle(
+                  color: whiteText, fontSize: 14),
             ),
           ),
         ],

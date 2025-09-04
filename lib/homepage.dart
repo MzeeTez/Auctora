@@ -25,7 +25,7 @@ class ChooseRolePage extends StatelessWidget {
               children: [
                 // Top cart animation
                 Lottie.asset(
-                  'assets/animations/login_bg.json',
+                  'assets/animations/Knock of hammer.json',
                   height: 150,
                 ),
                 const SizedBox(height: 20),

@@ -63,7 +63,7 @@ class _SignUpPageState extends State<SignUpPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Lottie.asset('assets/login_bg.json', height: 200),
+                Lottie.asset('assets/form registration.json', height: 200),
                 const SizedBox(height: 20),
                 const Text(
                   'Create Account',

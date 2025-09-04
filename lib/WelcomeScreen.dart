@@ -31,7 +31,7 @@ class WelcomeScreen extends StatelessWidget {
 
               // 🏷️ App Title
               const Text(
-                "AuctionHub",
+                "Auctora",
                 style: TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.bold,

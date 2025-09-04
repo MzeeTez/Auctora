@@ -11,7 +11,7 @@ class CheckoutPage extends StatelessWidget {
       ),
       body: const Center(
 
-        child: Text('payment gateway cost money the developer is broke so no checkout page :) '),
+        child: Text('payment gateway checkout page :) '),
       ),
     );
   }

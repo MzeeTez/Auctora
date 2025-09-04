@@ -4,6 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'create_auction_page.dart';
+import 'seller_auctions_page.dart';
+
 class SellerPage extends StatefulWidget {
   const SellerPage({super.key});
 
@@ -17,6 +20,7 @@ class _SellerPageState extends State<SellerPage> {
   final Color maroon = const Color(0xFF70142C);
   final Color cardColor = const Color(0xFF1E293B);
   final Color white = Colors.white;
+  final Color amber = Colors.amber;
 
   // --- State Variables ---
   final TextEditingController _searchController = TextEditingController();
@@ -127,7 +131,7 @@ class _SellerPageState extends State<SellerPage> {
         children: [
           Icon(Icons.gavel, color: Colors.amber),
           SizedBox(width: 8),
-          Text('AuctionHouse', style: TextStyle(color: Colors.white)),
+          Text('Auctora', style: TextStyle(color: Colors.white)),
         ],
       ),
       actions: [
@@ -200,15 +204,12 @@ class _SellerPageState extends State<SellerPage> {
   }
 
   Widget _buildDashboardButtons() {
-    return GridView(
+    return GridView.count(
+      crossAxisCount: 2,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.2,
-      ),
       children: [
         _dashboardButton(
           icon: Icons.add_shopping_cart,
@@ -219,15 +220,39 @@ class _SellerPageState extends State<SellerPage> {
           },
         ),
         _dashboardButton(
-          icon: Icons.gavel, // Changed icon
-          label: "Create Auction",
+          icon: Icons.gavel,
+          label: "Create Public Auction",
           onTap: () {
-            // Navigate to a page where the seller can select a product
-            // for auction.
             Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const SelectProductForAuctionPage()));
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SelectProductForAuctionPage(isPrivate: false),
+              ),
+            );
+          },
+        ),
+        _dashboardButton(
+          icon: Icons.lock,
+          label: "Create Private Auction",
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SelectProductForAuctionPage(isPrivate: true),
+              ),
+            );
+          },
+        ),
+        _dashboardButton(
+          icon: Icons.visibility,
+          label: "See My Auctions",
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SellerAuctionsPage(),
+              ),
+            );
           },
         ),
       ],
@@ -261,7 +286,6 @@ class _SellerPageState extends State<SellerPage> {
 
   Widget _buildProductGrid() {
     return StreamBuilder<QuerySnapshot>(
-      // Fetches only products listed by the current user
       stream: FirebaseFirestore.instance
           .collection('products')
           .where('userId', isEqualTo: _currentUser!.uid)
@@ -382,9 +406,21 @@ class _ProductCardState extends State<_ProductCard> {
                       onSelected: (value) {
                         if (value == 'remove') {
                           _removeProduct();
+                        } else if (value == 'create_auction') {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  CreateAuctionPage(productId: widget.product.id),
+                            ),
+                          );
                         }
                       },
                       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                        const PopupMenuItem<String>(
+                          value: 'create_auction',
+                          child: Text('Create Code Auction'),
+                        ),
                         const PopupMenuItem<String>(
                           value: 'remove',
                           child: Text('Remove'),
@@ -460,7 +496,9 @@ class _ProductCardState extends State<_ProductCard> {
 
 // Create a new page to select a product for auction
 class SelectProductForAuctionPage extends StatelessWidget {
-  const SelectProductForAuctionPage({Key? key}) : super(key: key);
+  final bool isPrivate;
+
+  const SelectProductForAuctionPage({Key? key, required this.isPrivate}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -494,7 +532,7 @@ class SelectProductForAuctionPage extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          CreateAuctionPage(productId: product.id),
+                          CreateAuctionPage(productId: product.id, isPrivate: isPrivate),
                     ),
                   );
                 },
@@ -507,16 +545,16 @@ class SelectProductForAuctionPage extends StatelessWidget {
   }
 }
 
-class CreateAuctionPage extends StatefulWidget {
+class CreateAuctionPageOLD extends StatefulWidget {
   final String productId;
 
-  const CreateAuctionPage({Key? key, required this.productId}) : super(key: key);
+  const CreateAuctionPageOLD({Key? key, required this.productId}) : super(key: key);
 
   @override
-  _CreateAuctionPageState createState() => _CreateAuctionPageState();
+  _CreateAuctionPageStateOLD createState() => _CreateAuctionPageStateOLD();
 }
 
-class _CreateAuctionPageState extends State<CreateAuctionPage> {
+class _CreateAuctionPageStateOLD extends State<CreateAuctionPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _startingBidController = TextEditingController();
   final TextEditingController _durationController = TextEditingController();
