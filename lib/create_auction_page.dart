@@ -17,6 +17,13 @@ class _CreateAuctionPageState extends State<CreateAuctionPage> {
   final TextEditingController _durationController = TextEditingController();
   bool _isLoading = false;
 
+  // --- Theme Colors ---
+  static const Color darkBackground = Color(0xFF0F172A);
+  static const Color maroon = Color(0xFF70142C);
+  static const Color cardColor = Color(0xFF1E293B);
+  static const Color white = Colors.white;
+  static const Color amber = Colors.amber;
+
   Future<void> _createAuction() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -45,16 +52,19 @@ class _CreateAuctionPageState extends State<CreateAuctionPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Auction created successfully!')),
           );
-          Navigator.pop(context);
+          // Pop twice to go back to the seller page
+          Navigator.of(context)..pop()..pop();
         }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to create auction: $e')),
         );
       } finally {
-        setState(() {
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
@@ -62,50 +72,111 @@ class _CreateAuctionPageState extends State<CreateAuctionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: darkBackground,
       appBar: AppBar(
-        title: const Text('Create Auction'),
+        title: const Text('Create New Auction'),
+        backgroundColor: cardColor,
+        foregroundColor: white,
+        elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                controller: _startingBidController,
-                decoration: const InputDecoration(labelText: 'Starting Bid'),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a starting bid';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
-                controller: _durationController,
-                decoration:
-                const InputDecoration(labelText: 'Duration (in hours)'),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a duration';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              if (_isLoading)
-                const CircularProgressIndicator()
-              else
-                ElevatedButton(
-                  onPressed: _createAuction,
-                  child: const Text('Create Auction'),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 20),
+                const Icon(Icons.gavel, color: amber, size: 60),
+                const SizedBox(height: 20),
+                Text(
+                  'Set Up Your Auction',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-            ],
+                const SizedBox(height: 32),
+                _buildTextFormField(
+                  controller: _startingBidController,
+                  labelText: 'Starting Bid',
+                  icon: Icons.monetization_on,
+                ),
+                const SizedBox(height: 24),
+                _buildTextFormField(
+                  controller: _durationController,
+                  labelText: 'Duration (in hours)',
+                  icon: Icons.timer,
+                ),
+                const SizedBox(height: 40),
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator(color: amber))
+                    : ElevatedButton(
+                  onPressed: _createAuction,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: maroon,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Create Auction',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTextFormField({
+    required TextEditingController controller,
+    required String labelText,
+    required IconData icon,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      style: TextStyle(color: white),
+      decoration: InputDecoration(
+        labelText: labelText,
+        labelStyle: const TextStyle(color: Colors.white70),
+        prefixIcon: Icon(icon, color: amber),
+        filled: true,
+        fillColor: cardColor,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade800),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: amber),
+        ),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter a value';
+        }
+        if (double.tryParse(value) == null) {
+          return 'Please enter a valid number';
+        }
+        return null;
+      },
     );
   }
 }

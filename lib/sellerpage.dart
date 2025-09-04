@@ -294,80 +294,169 @@ class _SellerPageState extends State<SellerPage> {
             crossAxisCount: 2,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 0.8,
+            childAspectRatio: 0.7,
           ),
           itemBuilder: (context, index) {
-            final data = products[index].data() as Map<String, dynamic>;
-            final name = data['name'] ?? 'No Name';
-            final isApproved = data['isApproved'] ?? false;
-            final imageUrls = data['imageUrls'] as List?;
-            final imageUrl = (imageUrls != null && imageUrls.isNotEmpty)
-                ? imageUrls[0]
-                : null;
-
-            return Container(
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(16)),
-                      child: imageUrl != null
-                          ? Image.network(imageUrl,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(
-                              Icons.broken_image,
-                              size: 50,
-                              color: Colors.white30))
-                          : const Center(
-                          child: Icon(Icons.image_not_supported,
-                              size: 50, color: Colors.white30)),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(
-                      name,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.white),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Row(
-                      children: [
-                        Icon(
-                          isApproved ? Icons.check_circle : Icons.hourglass_empty,
-                          color: isApproved ? Colors.green : Colors.orange,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          isApproved ? 'Approved' : 'Pending',
-                          style: TextStyle(
-                              color: isApproved ? Colors.green : Colors.orange),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            );
+            return _ProductCard(product: products[index]);
           },
         );
       },
     );
   }
 }
+
+class _ProductCard extends StatefulWidget {
+  final QueryDocumentSnapshot product;
+
+  const _ProductCard({required this.product});
+
+  @override
+  State<_ProductCard> createState() => _ProductCardState();
+}
+
+class _ProductCardState extends State<_ProductCard> {
+  bool _isExpanded = false;
+
+  Future<void> _removeProduct() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('products')
+          .doc(widget.product.id)
+          .delete();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Product removed successfully.')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to remove product: $e')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = widget.product.data() as Map<String, dynamic>;
+    final name = data['name'] ?? 'No Name';
+    final isApproved = data['isApproved'] ?? false;
+    final imageUrls = data['imageUrls'] as List?;
+    final imageUrl =
+    (imageUrls != null && imageUrls.isNotEmpty) ? imageUrls[0] : null;
+    final description = data['description'] ?? 'No description available.';
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isExpanded = !_isExpanded;
+        });
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16)),
+                    child: imageUrl != null
+                        ? Image.network(imageUrl,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                            Icons.broken_image,
+                            size: 50,
+                            color: Colors.white30))
+                        : const Center(
+                        child: Icon(Icons.image_not_supported,
+                            size: 50, color: Colors.white30)),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'remove') {
+                          _removeProduct();
+                        }
+                      },
+                      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                        const PopupMenuItem<String>(
+                          value: 'remove',
+                          child: Text('Remove'),
+                        ),
+                      ],
+                      icon: const Icon(Icons.more_vert, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                name,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, color: Colors.white),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Row(
+                children: [
+                  Icon(
+                    isApproved ? Icons.check_circle : Icons.hourglass_empty,
+                    color: isApproved ? Colors.green : Colors.orange,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    isApproved ? 'Approved' : 'Pending',
+                    style: TextStyle(
+                        color: isApproved ? Colors.green : Colors.orange),
+                  ),
+                ],
+              ),
+            ),
+            AnimatedCrossFade(
+              firstChild: Container(),
+              secondChild: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      description,
+                      style: const TextStyle(color: Colors.white70),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: _removeProduct,
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      label: const Text('Remove', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              ),
+              crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 
 // Create a new page to select a product for auction
 class SelectProductForAuctionPage extends StatelessWidget {

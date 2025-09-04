@@ -3,7 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class NewRefurbishedPage extends StatelessWidget {
+// --- Main Page Widget (Stateful) ---
+
+class NewRefurbishedPage extends StatefulWidget {
   const NewRefurbishedPage({super.key});
 
   // --- UI Colors ---
@@ -12,63 +14,170 @@ class NewRefurbishedPage extends StatelessWidget {
   static const Color textColor = Colors.white;
 
   @override
+  State<NewRefurbishedPage> createState() => _NewRefurbishedPageState();
+}
+
+class _NewRefurbishedPageState extends State<NewRefurbishedPage> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchTerm = '';
+  String _sortOption = 'Newest First';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchTerm = _searchController.text.trim();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: TextField(
+        controller: _searchController,
+        style: const TextStyle(color: NewRefurbishedPage.textColor),
+        decoration: InputDecoration(
+          hintText: 'Search new & refurbished items...',
+          hintStyle: const TextStyle(color: Colors.white54),
+          prefixIcon: const Icon(Icons.search, color: Colors.white70),
+          filled: true,
+          fillColor: Colors.black.withOpacity(0.3),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSortDropdown() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: DropdownButton<String>(
+        value: _sortOption,
+        dropdownColor: NewRefurbishedPage.boxColor,
+        style: const TextStyle(color: NewRefurbishedPage.textColor),
+        onChanged: (String? newValue) {
+          setState(() {
+            _sortOption = newValue!;
+          });
+        },
+        items: <String>['Newest First', 'Price: Low to High', 'Price: High to Low']
+            .map<DropdownMenuItem<String>>((String value) {
+          return DropdownMenuItem<String>(
+            value: value,
+            child: Text(value),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: NewRefurbishedPage.background,
       appBar: AppBar(
         title: const Text('New & Refurbished'),
-        backgroundColor: boxColor,
-        foregroundColor: textColor,
+        backgroundColor: NewRefurbishedPage.boxColor,
+        foregroundColor: NewRefurbishedPage.textColor,
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('products')
-            .where('category', isEqualTo: 'New & Refurbished')
-            .where('isApproved', isEqualTo: true)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(
-              child: Text('Error: ${snapshot.error}',
-                  style: const TextStyle(color: textColor)),
-            );
-          }
+      body: Column(
+        children: [
+          _buildSearchBar(),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _buildSortDropdown(),
+          ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('products')
+                  .where('category', isEqualTo: 'New & Refurbished')
+                  .where('isApproved', isEqualTo: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('Error: ${snapshot.error}',
+                        style: const TextStyle(color: NewRefurbishedPage.textColor)),
+                  );
+                }
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-                child: CircularProgressIndicator(color: textColor));
-          }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                      child: CircularProgressIndicator(color: NewRefurbishedPage.textColor));
+                }
 
-          final products = snapshot.data?.docs ?? [];
+                var products = snapshot.data?.docs ?? [];
 
-          if (products.isEmpty) {
-            return const Center(
-              child: Text('No new or refurbished products found.',
-                  style: TextStyle(color: textColor)),
-            );
-          }
+                // --- Filtering and Sorting Logic ---
+                if (_searchTerm.isNotEmpty) {
+                  products = products.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final name = (data['name'] ?? '').toString().toLowerCase();
+                    return name.contains(_searchTerm.toLowerCase());
+                  }).toList();
+                }
 
-          return GridView.builder(
-            padding: const EdgeInsets.all(12),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.65, // Adjusted aspect ratio for new buttons
+                products.sort((a, b) {
+                  final dataA = a.data() as Map<String, dynamic>;
+                  final dataB = b.data() as Map<String, dynamic>;
+                  if (_sortOption == 'Price: Low to High') {
+                    final priceA = (dataA['price'] as num?) ?? 0.0;
+                    final priceB = (dataB['price'] as num?) ?? 0.0;
+                    return priceA.compareTo(priceB);
+                  } else if (_sortOption == 'Price: High to Low') {
+                    final priceA = (dataA['price'] as num?) ?? 0.0;
+                    final priceB = (dataB['price'] as num?) ?? 0.0;
+                    return priceB.compareTo(priceA);
+                  } else { // Newest First (default)
+                    final timeA = (dataA['timestamp'] as Timestamp?) ?? Timestamp(0, 0);
+                    final timeB = (dataB['timestamp'] as Timestamp?) ?? Timestamp(0, 0);
+                    return timeB.compareTo(timeA);
+                  }
+                });
+                // --- End Logic ---
+
+                if (products.isEmpty) {
+                  return const Center(
+                    child: Text('No products match your search or filter.',
+                        style: TextStyle(color: NewRefurbishedPage.textColor)),
+                  );
+                }
+
+                return GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.65,
+                  ),
+                  itemCount: products.length,
+                  itemBuilder: (context, index) {
+                    return _ProductGridItem(productDocument: products[index]);
+                  },
+                );
+              },
             ),
-            itemCount: products.length,
-            itemBuilder: (context, index) {
-              // Use the new, more capable widget for each grid item
-              return _ProductGridItem(productDocument: products[index]);
-            },
-          );
-        },
+          ),
+        ],
       ),
     );
   }
 }
 
-// --- New Stateful Widget for each Product Card ---
+// --- Stateful Widget for each Product Card ---
 
 class _ProductGridItem extends StatefulWidget {
   final DocumentSnapshot productDocument;
@@ -184,6 +293,7 @@ class _ProductGridItemState extends State<_ProductGridItem> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
+                          // ***** THIS IS THE CORRECTED LINE *****
                           builder: (context) => ProductInfoPage(
                             productDocument: widget.productDocument,
                           ),
@@ -252,7 +362,7 @@ class _ProductGridItemState extends State<_ProductGridItem> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
-                  "₹$price",
+                  "\$${(product['price'] as num? ?? 0.0).toStringAsFixed(2)}",
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
