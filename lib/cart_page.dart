@@ -28,9 +28,8 @@ class _CartPageState extends State<CartPage> {
           .snapshots()
           .asyncMap((cartSnapshot) async {
         List<String> productIds = cartSnapshot.docs.map((doc) => doc.id).toList();
-        if (productIds.isEmpty) {
-          return [];
-        }
+        if (productIds.isEmpty) return [];
+
         QuerySnapshot productSnapshots = await _firestore
             .collection('products')
             .where(FieldPath.documentId, whereIn: productIds)
@@ -74,22 +73,16 @@ class _CartPageState extends State<CartPage> {
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(
-              child: Text(
-                'Your cart is empty.',
-                style: TextStyle(color: Colors.white70, fontSize: 18),
-              ),
+              child: Text('Your cart is empty.', style: TextStyle(color: Colors.white70, fontSize: 18)),
             );
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
           }
 
           var cartItems = snapshot.data!;
           double totalCost = 0.0;
           for (var item in cartItems) {
             final data = item.data() as Map<String, dynamic>;
-            final price = data['price'] ?? data['startingPrice'] ?? 0;
-            totalCost += (price is String ? double.tryParse(price) ?? 0.0 : price.toDouble());
+            final priceData = data['price'] ?? data['startingPrice'] ?? 0;
+            totalCost += (priceData is String ? double.tryParse(priceData) ?? 0.0 : priceData.toDouble());
           }
 
           return Column(
@@ -134,7 +127,7 @@ class _CartPageState extends State<CartPage> {
       padding: const EdgeInsets.all(16.0),
       decoration: const BoxDecoration(
         color: Color(0xFF161B22),
-        border: Border(top: BorderSide(color: Colors.black26)),
+        border: Border(top: BorderSide(color: Colors.white10)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -150,17 +143,18 @@ class _CartPageState extends State<CartPage> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: buttonColor,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(vertical: 15),
             ),
-            onPressed: totalCost > 0 ? () {
+            onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const CheckoutPage()),
+                MaterialPageRoute(
+                  builder: (context) => CheckoutPage(totalAmount: currentCartTotal),
+                ),
               );
-            } : null,
-            child: const Text('Proceed to Checkout', style: TextStyle(fontSize: 18, color: Colors.white)),
-          ),
+            },
+            child: const Text('PROCEED TO PAY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          )
         ],
       ),
     );
