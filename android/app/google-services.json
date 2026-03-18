@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1042375285915",
+    "project_id": "auctora-cbf7c",
+    "storage_bucket": "auctora-cbf7c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1042375285915:android:4ef399eb0bce088388fa3e",
+        "android_client_info": {
+          "package_name": "com.example.auctora"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZl4B3AbZB-NNEDMBzbZnbT7tLGQLyt3w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

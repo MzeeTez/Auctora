@@ -1,0 +1,654 @@
+import 'package:auctora/AddProductPage.dart';
+import 'package:auctora/homepage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+
+import 'create_auction_page.dart';
+import 'seller_auctions_page.dart';
+
+class SellerPage extends StatefulWidget {
+  const SellerPage({super.key});
+
+  @override
+  State<SellerPage> createState() => _SellerPageState();
+}
+
+class _SellerPageState extends State<SellerPage> {
+  // --- UI Colors ---
+  final Color darkBackground = const Color(0xFF0F172A);
+  final Color maroon = const Color(0xFF70142C);
+  final Color cardColor = const Color(0xFF1E293B);
+  final Color white = Colors.white;
+  final Color amber = Colors.amber;
+
+  // --- State Variables ---
+  final TextEditingController _searchController = TextEditingController();
+  String _searchTerm = '';
+  User? _currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUser = FirebaseAuth.instance.currentUser;
+    _searchController.addListener(() {
+      setState(() {
+        _searchTerm = _searchController.text.trim().toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // --- Helper Methods ---
+
+  // Filter products by search term
+  List<QueryDocumentSnapshot> _filterProducts(
+      List<QueryDocumentSnapshot> products) {
+    if (_searchTerm.isEmpty) return products;
+    return products.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final name = (data['name'] ?? '').toString().toLowerCase();
+      return name.contains(_searchTerm);
+    }).toList();
+  }
+
+  // Show a snackbar for unimplemented features
+  void _showNotImplemented(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Feature not implemented yet.')),
+    );
+  }
+
+  // --- Build Methods ---
+
+  @override
+  Widget build(BuildContext context) {
+    if (_currentUser == null) {
+      return Scaffold(
+        backgroundColor: darkBackground,
+        appBar: AppBar(
+          title: const Text('My Products'),
+          backgroundColor: darkBackground,
+        ),
+        body: const Center(
+          child: Text(
+            'Please log in to see your products.',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const ChooseRolePage()),
+              (Route<dynamic> route) => false,
+        );
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: darkBackground,
+        drawer: _buildDrawer(),
+        appBar: _buildAppBar(),
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSearchBar(),
+              const SizedBox(height: 20),
+              _buildDashboardButtons(),
+              const SizedBox(height: 24),
+              Text(
+                "My Listed Products",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: white,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(child: _buildProductGrid()),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  AppBar _buildAppBar() {
+    return AppBar(
+      backgroundColor: darkBackground,
+      iconTheme: const IconThemeData(color: Colors.white),
+      title: const Row(
+        children: [
+          Icon(Icons.gavel, color: Colors.amber),
+          SizedBox(width: 8),
+          Text('Auctora', style: TextStyle(color: Colors.white)),
+        ],
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.notifications, color: Colors.white),
+          onPressed: () => _showNotImplemented(context),
+        ),
+        IconButton(
+          icon: const Icon(Icons.account_circle, color: Colors.white),
+          onPressed: () => _showNotImplemented(context),
+        ),
+      ],
+    );
+  }
+
+  Drawer _buildDrawer() {
+    return Drawer(
+      backgroundColor: darkBackground,
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(color: maroon),
+            child: Center(
+              child: Text('Seller Menu',
+                  style: TextStyle(
+                      color: white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold)),
+            ),
+          ),
+          _drawerItem(Icons.home, "Home", () {
+            Navigator.pop(context);
+            Navigator.pushReplacement(
+                context, MaterialPageRoute(builder: (_) => const ChooseRolePage()));
+          }),
+          _drawerItem(
+              Icons.shopping_cart, "My Orders", () => _showNotImplemented(context)),
+          _drawerItem(
+              Icons.favorite, "Wishlist", () => _showNotImplemented(context)),
+        ],
+      ),
+    );
+  }
+
+  Widget _drawerItem(IconData icon, String title, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: white),
+      title: Text(title, style: TextStyle(color: white)),
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return TextField(
+      controller: _searchController,
+      decoration: InputDecoration(
+        hintText: 'Search my products...',
+        prefixIcon: const Icon(Icons.search, color: Colors.white70),
+        filled: true,
+        fillColor: Colors.black26,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30),
+          borderSide: BorderSide.none,
+        ),
+        hintStyle: const TextStyle(color: Colors.white54),
+      ),
+      style: const TextStyle(color: Colors.white),
+    );
+  }
+
+  Widget _buildDashboardButtons() {
+    return GridView.count(
+      crossAxisCount: 2,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        _dashboardButton(
+          icon: Icons.add_shopping_cart,
+          label: "Add Product",
+          onTap: () {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const AddProductPage()));
+          },
+        ),
+        _dashboardButton(
+          icon: Icons.gavel,
+          label: "Create Public Auction",
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SelectProductForAuctionPage(isPrivate: false),
+              ),
+            );
+          },
+        ),
+        _dashboardButton(
+          icon: Icons.lock,
+          label: "Create Private Auction",
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SelectProductForAuctionPage(isPrivate: true),
+              ),
+            );
+          },
+        ),
+        _dashboardButton(
+          icon: Icons.visibility,
+          label: "See My Auctions",
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SellerAuctionsPage(),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _dashboardButton(
+      {required IconData icon,
+        required String label,
+        required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: maroon,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: white, size: 36),
+            const SizedBox(height: 10),
+            Text(label,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductGrid() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('products')
+          .where('userId', isEqualTo: _currentUser!.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+              child: Text('Error: ${snapshot.error}',
+                  style: TextStyle(color: white)));
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+              child: Text('You have not added any products yet.',
+                  style: TextStyle(color: white)));
+        }
+
+        final products = _filterProducts(snapshot.data!.docs);
+        if (products.isEmpty) {
+          return Center(
+              child: Text('No products match your search.',
+                  style: TextStyle(color: white)));
+        }
+
+        return GridView.builder(
+          itemCount: products.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 0.7,
+          ),
+          itemBuilder: (context, index) {
+            return _ProductCard(product: products[index]);
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ProductCard extends StatefulWidget {
+  final QueryDocumentSnapshot product;
+
+  const _ProductCard({required this.product});
+
+  @override
+  State<_ProductCard> createState() => _ProductCardState();
+}
+
+class _ProductCardState extends State<_ProductCard> {
+  bool _isExpanded = false;
+
+  Future<void> _removeProduct() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('products')
+          .doc(widget.product.id)
+          .delete();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Product removed successfully.')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to remove product: $e')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = widget.product.data() as Map<String, dynamic>;
+    final name = data['name'] ?? 'No Name';
+    final isApproved = data['isApproved'] ?? false;
+    final imageUrls = data['imageUrls'] as List?;
+    final imageUrl =
+    (imageUrls != null && imageUrls.isNotEmpty) ? imageUrls[0] : null;
+    final description = data['description'] ?? 'No description available.';
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isExpanded = !_isExpanded;
+        });
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16)),
+                    child: imageUrl != null
+                        ? Image.network(imageUrl,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                            Icons.broken_image,
+                            size: 50,
+                            color: Colors.white30))
+                        : const Center(
+                        child: Icon(Icons.image_not_supported,
+                            size: 50, color: Colors.white30)),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'remove') {
+                          _removeProduct();
+                        } else if (value == 'create_auction') {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  CreateAuctionPage(productId: widget.product.id),
+                            ),
+                          );
+                        }
+                      },
+                      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                        const PopupMenuItem<String>(
+                          value: 'create_auction',
+                          child: Text('Create Code Auction'),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'remove',
+                          child: Text('Remove'),
+                        ),
+                      ],
+                      icon: const Icon(Icons.more_vert, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                name,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, color: Colors.white),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Row(
+                children: [
+                  Icon(
+                    isApproved ? Icons.check_circle : Icons.hourglass_empty,
+                    color: isApproved ? Colors.green : Colors.orange,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    isApproved ? 'Approved' : 'Pending',
+                    style: TextStyle(
+                        color: isApproved ? Colors.green : Colors.orange),
+                  ),
+                ],
+              ),
+            ),
+            AnimatedCrossFade(
+              firstChild: Container(),
+              secondChild: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      description,
+                      style: const TextStyle(color: Colors.white70),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: _removeProduct,
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      label: const Text('Remove', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              ),
+              crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+// Create a new page to select a product for auction
+class SelectProductForAuctionPage extends StatelessWidget {
+  final bool isPrivate;
+
+  const SelectProductForAuctionPage({Key? key, required this.isPrivate}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Select a Product to Auction'),
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('products')
+            .where('userId', isEqualTo: user!.uid)
+            .where('isApproved', isEqualTo: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final products = snapshot.data!.docs;
+
+          return ListView.builder(
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final product = products[index];
+              return ListTile(
+                title: Text(product['name']),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          CreateAuctionPage(productId: product.id, isPrivate: isPrivate),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class CreateAuctionPageOLD extends StatefulWidget {
+  final String productId;
+
+  const CreateAuctionPageOLD({Key? key, required this.productId}) : super(key: key);
+
+  @override
+  _CreateAuctionPageStateOLD createState() => _CreateAuctionPageStateOLD();
+}
+
+class _CreateAuctionPageStateOLD extends State<CreateAuctionPage> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _startingBidController = TextEditingController();
+  final TextEditingController _durationController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _createAuction() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final now = Timestamp.now();
+          final durationInHours = int.parse(_durationController.text);
+          final endTime = Timestamp.fromMillisecondsSinceEpoch(
+              now.millisecondsSinceEpoch + durationInHours * 3600 * 1000);
+
+          await FirebaseFirestore.instance.collection('auctions').add({
+            'productId': widget.productId,
+            'sellerId': user.uid,
+            'startingBid': double.parse(_startingBidController.text),
+            'currentBid': double.parse(_startingBidController.text),
+            'highestBidderId': null,
+            'startTime': now,
+            'endTime': endTime,
+            'status': 'active',
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Auction created successfully!')),
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to create auction: $e')),
+        );
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Create Auction'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _startingBidController,
+                decoration: const InputDecoration(labelText: 'Starting Bid'),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a starting bid';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _durationController,
+                decoration:
+                const InputDecoration(labelText: 'Duration (in hours)'),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a duration';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              if (_isLoading)
+                const CircularProgressIndicator()
+              else
+                ElevatedButton(
+                  onPressed: _createAuction,
+                  child: const Text('Create Auction'),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
