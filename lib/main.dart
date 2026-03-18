@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter_stripe/flutter_stripe.dart'; // Integration for payments
+import 'package:flutter_stripe/flutter_stripe.dart';
 
 import 'WelcomeScreen.dart';
 import 'firebase_options.dart';
 import 'no_internet_page.dart';
-import 'homepage.dart'; // Ensure this contains ChooseRolePage
+import 'homepage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,7 +17,7 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Initialize Stripe (Replace with your actual Publishable Key from Stripe Dashboard)
+  // Initialize Stripe
   Stripe.publishableKey = "pk_test_your_key_here";
   await Stripe.instance.applySettings();
 
@@ -52,48 +52,53 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
   @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  List<ConnectivityResult> _connectivityResults = [ConnectivityResult.wifi];
+
+  @override
+  void initState() {
+    super.initState();
+    // Check initial connectivity immediately to prevent the infinite loading bug
+    Connectivity().checkConnectivity().then((result) {
+      if (mounted) setState(() => _connectivityResults = result);
+    });
+
+    // Listen to changes afterwards
+    Connectivity().onConnectivityChanged.listen((result) {
+      if (mounted) setState(() => _connectivityResults = result);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // We listen to connectivity changes to show the No Internet page dynamically
-    return StreamBuilder<List<ConnectivityResult>>(
-      stream: Connectivity().onConnectivityChanged,
-      builder: (context, snapshot) {
-        // Handle connectivity check
-        if (snapshot.connectionState == ConnectionState.waiting) {
+    final isOffline = _connectivityResults.contains(ConnectivityResult.none);
+
+    if (isOffline) {
+      return const NoInternetPage();
+    }
+
+    // Handle Authentication state
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, authSnapshot) {
+        if (authSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        final connectivityResults = snapshot.data ?? [ConnectivityResult.none];
-        final isOffline = connectivityResults.contains(ConnectivityResult.none);
-
-        if (isOffline) {
-          return const NoInternetPage();
+        if (authSnapshot.hasData) {
+          return const ChooseRolePage();
+        } else {
+          return const WelcomeScreen();
         }
-
-        // Handle Authentication state
-        return StreamBuilder<User?>(
-          stream: FirebaseAuth.instance.authStateChanges(),
-          builder: (context, authSnapshot) {
-            if (authSnapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
-            }
-
-            if (authSnapshot.hasData) {
-              // User is logged in
-              return const ChooseRolePage();
-            } else {
-              // User is not logged in
-              return const WelcomeScreen();
-            }
-          },
-        );
       },
     );
   }

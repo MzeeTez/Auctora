@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.8.1
+  sdk: '>=3.0.0 <4.0.0' # Fixed invalid SDK version
 
 dependencies:
   flutter:
@@ -47,4 +47,3 @@ flutter:
     - assets/animations/buyer.json
     - assets/animations/Forget password animation.json
     - assets/animations/form registration.json
-

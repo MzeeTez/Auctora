@@ -1,11 +1,12 @@
-import 'package:auctora/homepage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'homepage.dart'; // Swapped to relative import
 import 'forgot_password_screen.dart';
 import 'signup_screen.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -33,6 +34,9 @@ class _LoginScreenState extends State<LoginScreen> {
         password: password,
       );
 
+      // Must check if the widget is still in the tree after an await
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("✅ Login Successful")),
       );
@@ -43,25 +47,30 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } on FirebaseAuthException catch (e) {
       String message = "Login failed";
-      if (e.code == 'user-not-found') message = "User not found";
+      // Firebase auth error codes changed recently, accommodating both
+      if (e.code == 'user-not-found' || e.code == 'invalid-credential') message = "Invalid email or password";
       if (e.code == 'wrong-password') message = "Incorrect password";
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("❌ $message")),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("❌ Unexpected error: $e")),
       );
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final Color deepMaroon = const Color(0xFF70142c);
-    final Color ivoryWhite = const Color(0xFFF9F4EF);
+    const Color deepMaroon = Color(0xFF70142c);
+    const Color ivoryWhite = Color(0xFFF9F4EF);
 
     return Scaffold(
       backgroundColor: deepMaroon,
@@ -236,7 +245,7 @@ class _LoginScreenState extends State<LoginScreen> {
         validator: validator,
         style: GoogleFonts.poppins(),
         decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: Color(0xFF70142c)),
+          prefixIcon: Icon(icon, color: const Color(0xFF70142c)),
           hintText: hint,
           hintStyle: GoogleFonts.poppins(
             color: Colors.grey[700],

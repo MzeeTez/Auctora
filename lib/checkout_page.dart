@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'dart:convert';
-import 'package:http:http.dart' as http;
+// FIX: Corrected the package import syntax (swapped colon for slash)
+import 'package:http/http.dart' as http;
 
 class CheckoutPage extends StatefulWidget {
   final double totalAmount;

@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.example.auctora"
-    compileSdk = 35
+    compileSdk = 36 // FIX: Updated to 36
     ndkVersion = "27.0.12077973"
     // You can adjust this based on your system NDK version
 

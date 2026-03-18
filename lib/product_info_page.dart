@@ -235,10 +235,14 @@ class _ProductInfoPageState extends State<ProductInfoPage> {
                     ),
                   ),
                   onPressed: () {
+                    // Grab the product price and pass it to CheckoutPage
+                    final priceString = productData['price']?.toString() ?? '0';
+                    final checkoutAmount = double.tryParse(priceString) ?? 0.0;
+
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const CheckoutPage(),
+                        builder: (context) => CheckoutPage(totalAmount: checkoutAmount),
                       ),
                     );
                   },

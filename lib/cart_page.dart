@@ -149,7 +149,8 @@ class _CartPageState extends State<CartPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => CheckoutPage(totalAmount: currentCartTotal),
+                  // FIX: Changed currentCartTotal to totalCost
+                  builder: (context) => CheckoutPage(totalAmount: totalCost),
                 ),
               );
             },

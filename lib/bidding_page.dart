@@ -228,7 +228,7 @@ class _BiddingPageState extends State<BiddingPage> {
                       ),
                     ),
                   ),
-                  _buildPlaceBidBar(),
+                  _buildPlaceBidBar(auctionData), // Passed auctionData here
                 ],
               );
             },
@@ -362,8 +362,8 @@ class _BiddingPageState extends State<BiddingPage> {
     );
   }
 
-  // UPDATED WIDGET
-  Widget _buildPlaceBidBar() {
+  // UPDATED WIDGET - Now accepts auctionData to get the fallback bid amount
+  Widget _buildPlaceBidBar(Map<String, dynamic> auctionData) {
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.all(16.0),
@@ -422,10 +422,14 @@ class _BiddingPageState extends State<BiddingPage> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
+                      // Grab the value entered, or default to the current bid
+                      final fallbackBid = (auctionData['currentBid'] as num?)?.toDouble() ?? 0.0;
+                      final amountToPay = double.tryParse(_bidController.text) ?? fallbackBid;
+
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const CheckoutPage(),
+                          builder: (context) => CheckoutPage(totalAmount: amountToPay),
                         ),
                       );
                     },
