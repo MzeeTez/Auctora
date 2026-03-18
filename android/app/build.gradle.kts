@@ -8,9 +8,8 @@ plugins {
 
 android {
     namespace = "com.example.auctora"
-    compileSdk = 36 // FIX: Updated to 36
+    compileSdk = 36 // Better compatibility than 36 for current Flutter plugins
     ndkVersion = "27.0.12077973"
-    // You can adjust this based on your system NDK version
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -23,26 +22,23 @@ android {
 
     defaultConfig {
         applicationId = "com.example.auctora"
-        minSdk = flutter.minSdkVersion
-        targetSdk = 34
+        minSdk = flutter.minSdkVersion // <-- KEEP THIS AT 21 (For Stripe)
+        targetSdk = 34 // (You can leave this at 34 or change to 36, either is fine)
         versionCode = 1
         versionName = "1.0"
     }
 
     buildTypes {
         release {
-            // Use your release signing config here
             signingConfig = signingConfigs.getByName("debug")
         }
     }
 }
 
 dependencies {
+    // REMOVED the hardcoded Firebase dependencies.
+    // Flutter handles Firebase automatically via pubspec.yaml!
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.0")
-    implementation("com.google.firebase:firebase-auth:22.3.0")
-    implementation("com.google.firebase:firebase-analytics-ktx:21.6.1")
-    implementation("com.google.firebase:firebase-database-ktx:20.3.1")
-    implementation("com.google.firebase:firebase-messaging-ktx:23.4.1")
     implementation("androidx.core:core-ktx:1.12.0")
 }
 

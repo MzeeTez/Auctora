@@ -18,7 +18,7 @@ void main() async {
   );
 
   // Initialize Stripe
-  Stripe.publishableKey = "pk_test_your_key_here";
+  Stripe.publishableKey = "pk_test_51TCQdVRukTzh2MHjHBMzwh2V6zUd3PBB9aU0jhJAHtzWXJOVHkK7MPTYAmVM4rtdmTfL6IDqEY7FPOYsOW00auSu00dP35y0T3";
   await Stripe.instance.applySettings();
 
   runApp(const MyApp());
